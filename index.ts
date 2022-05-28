@@ -9,34 +9,52 @@ import {
 import { copySync } from "fs-extra";
 
 const path_to_sorts = ["../Projets Actuel", "../Projets"];
-const output_path = "../Projects";
+const OUTPUT_PATH = "../Projects";
+
+let total = 0;
+let current = 0;
 
 function filter(src: string) {
   return src.includes("node_modules") ? false : true;
 }
-
-function outputName(path: string, i: number = 0): string {
+/**
+ * Use to get the name of the directory.
+ * If the directory already exist, it will add a number at the end of the name.
+ * @param path The path to the directory.
+ * @returns The path to the directory.
+ */
+function getDirectoryName(path: string, i: number = 0): string {
   const add = i === 0 ? "" : ` (${i})`;
 
   if (existsSync(path + add)) {
-    return outputName(path, i + 1);
+    return getDirectoryName(path, i + 1);
   }
 
   return path + add;
 }
 
-function handleFolder(name: string, folder_path: string) {
-  let output = outputName(
-    `${output_path}/${name}/${folder_path.split("/").pop()}`
+/**
+ * Copy a directory to another directory, can have a parent directory.
+ * @param parent_name The name of the parent directory.
+ * @param dir_path The path to the directory to copy.
+ * @param dir_out_path The path to the output directory.
+ */
+function copyDirectory(
+  parent_name: string,
+  dir_path: string,
+  dir_out_path: string
+) {
+  let output = getDirectoryName(
+    `${dir_out_path}/${parent_name}/${dir_path.split("/").pop()}`
   );
-  console.log(output);
 
-  copySync(folder_path, output, {
+  copySync(dir_path, output, {
     filter,
   });
 }
 
 function handleFiles(path: string, folder: string, files: string[]) {
+  // JS Projects
   if (files.includes("package.json")) {
     const package_json = JSON.parse(
       readFileSync(`${path}/${folder}/package.json`, { encoding: "utf-8" })
@@ -54,60 +72,68 @@ function handleFiles(path: string, folder: string, files: string[]) {
     };
 
     let category: string = "Other";
-    console.log(package_json);
-    
+
     for (const type in types) {
-      if (package_json?.dependencies?.hasOwnProperty(type) || package_json?.devDependencies?.hasOwnProperty(type)) {
+      if (
+        package_json?.dependencies?.hasOwnProperty(type) ||
+        package_json?.devDependencies?.hasOwnProperty(type)
+      ) {
         category = types[type];
         break;
       }
     }
 
-    handleFolder("Javascript/" + category, `${path}/${folder}`);
+    copyDirectory("Javascript/" + category, `${path}/${folder}`, OUTPUT_PATH);
     return;
   }
 
+  // Python Projects
   if (
     files.some((file) => file.includes(".py")) ||
     files.includes("requirements.txt")
   ) {
-    handleFolder("Python", `${path}/${folder}`);
+    copyDirectory("Python", `${path}/${folder}`, OUTPUT_PATH);
     return;
   }
 
+  // Vanilla HTML Projects
   if (files.some((file) => file.includes(".html"))) {
-    handleFolder("HTML", `${path}/${folder}`);
+    copyDirectory("HTML", `${path}/${folder}`, OUTPUT_PATH);
     return;
   }
 
+  // Subfolder Projects
   if (
     files.every((file) => lstatSync(`${path}/${folder}/${file}`).isDirectory())
   ) {
-    console.log("Recursive", files);
-
     handleFolderFiles(`${path}/${folder}`);
     return;
   }
-  handleFolder("Other", `${path}/${folder}`);
+  copyDirectory("Other", `${path}/${folder}`, OUTPUT_PATH);
 }
 
 function handleFolderFiles(path: string) {
   const dir = readdirSync(path);
 
+  total += dir.length;
+
   for (const folder of dir) {
     const path_string = `${path}/${folder}`;
-
+    
     if (!lstatSync(path_string).isDirectory()) continue;
-
+    
     const files = readdirSync(path_string);
-
+    
     handleFiles(path, folder, files);
+    
+    current++;
+    console.log(`${current}/${total}: ${folder}`);
   }
 }
 
 // Create output folder
-rmSync(output_path, { recursive: true, force: true });
-mkdirSync(output_path);
+rmSync(OUTPUT_PATH, { recursive: true, force: true });
+mkdirSync(OUTPUT_PATH);
 
 for (const path_to_sort of path_to_sorts) {
   handleFolderFiles(path_to_sort);
