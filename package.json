@@ -2,16 +2,21 @@
   "name": "directory-sorter",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/bin/index.js",
+  "bin": {
+    "sp": "./dist/bin/index.js",
+    "sortprojects": "./dist/bin/index.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc && node dist/index.js"
+    "dev": "tsc && node dist/index.js",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/fs-extra": "^9.0.13",
+    "commander": "^9.3.0",
     "fs-extra": "^10.1.0"
   }
 }

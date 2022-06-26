@@ -8,8 +8,18 @@ import {
 } from "fs";
 import { copySync } from "fs-extra";
 
-const path_to_sorts = ["../Projets Actuel", "../Projets"];
-const OUTPUT_PATH = "../Projects";
+
+const types: { [key: string]: string } = {
+  nuxt: "NuxtJS",
+  next: "NextJS",
+  react: "React",
+  vue: "Vue",
+  "@angular/core": "Angular",
+  svelte: "Svelte",
+  express: "Express",
+  "discord.js": "Bot Discord",
+  puppeteer: "Scrapping",
+};
 
 let total = 0;
 let current = 0;
@@ -53,37 +63,35 @@ function copyDirectory(
   });
 }
 
-function handleFiles(path: string, folder: string, files: string[]) {
+function handleFiles(path: string, folder: string, files: string[], output_path: string) {
+  // Vanilla HTML Projects
+  if (files.some((file) => file.includes(".html"))) {
+    copyDirectory("HTML", `${path}/${folder}`, output_path);
+    return;
+  }
   // JS Projects
   if (files.includes("package.json")) {
     const package_json = JSON.parse(
       readFileSync(`${path}/${folder}/package.json`, { encoding: "utf-8" })
     );
-    const types: { [key: string]: string } = {
-      nuxt: "NuxtJS",
-      next: "NextJS",
-      react: "React",
-      vue: "Vue",
-      "@angular/core": "Angular",
-      svelte: "Svelte",
-      express: "Express",
-      "discord.js": "Bot Discord",
-      puppeteer: "Scrapping",
-    };
 
     let category: string = "Other";
 
-    for (const type in types) {
-      if (
-        package_json?.dependencies?.hasOwnProperty(type) ||
-        package_json?.devDependencies?.hasOwnProperty(type)
-      ) {
-        category = types[type];
-        break;
+    if (package_json.workspaces) {
+      category = "Monorepo";
+    } else {
+      for (const type in types) {
+        if (
+          package_json?.dependencies?.hasOwnProperty(type) ||
+          package_json?.devDependencies?.hasOwnProperty(type)
+        ) {
+          category = types[type];
+          break;
+        }
       }
     }
 
-    copyDirectory("Javascript/" + category, `${path}/${folder}`, OUTPUT_PATH);
+    copyDirectory("Javascript/" + category, `${path}/${folder}`, output_path);
     return;
   }
 
@@ -92,13 +100,7 @@ function handleFiles(path: string, folder: string, files: string[]) {
     files.some((file) => file.includes(".py")) ||
     files.includes("requirements.txt")
   ) {
-    copyDirectory("Python", `${path}/${folder}`, OUTPUT_PATH);
-    return;
-  }
-
-  // Vanilla HTML Projects
-  if (files.some((file) => file.includes(".html"))) {
-    copyDirectory("HTML", `${path}/${folder}`, OUTPUT_PATH);
+    copyDirectory("Python", `${path}/${folder}`, output_path);
     return;
   }
 
@@ -106,35 +108,35 @@ function handleFiles(path: string, folder: string, files: string[]) {
   if (
     files.every((file) => lstatSync(`${path}/${folder}/${file}`).isDirectory())
   ) {
-    handleFolderFiles(`${path}/${folder}`);
+    handleFolderFiles(`${path}/${folder}`, output_path);
     return;
   }
-  copyDirectory("Other", `${path}/${folder}`, OUTPUT_PATH);
+  copyDirectory("Other", `${path}/${folder}`, output_path);
 }
 
-function handleFolderFiles(path: string) {
+export function handleFolderFiles(path: string, output_path: string) {
   const dir = readdirSync(path);
 
   total += dir.length;
 
   for (const folder of dir) {
     const path_string = `${path}/${folder}`;
-    
+
     if (!lstatSync(path_string).isDirectory()) continue;
-    
+
     const files = readdirSync(path_string);
-    
-    handleFiles(path, folder, files);
-    
+
+    handleFiles(path, folder, files, output_path);
+
     current++;
     console.log(`${current}/${total}: ${folder}`);
   }
 }
 
-// Create output folder
-rmSync(OUTPUT_PATH, { recursive: true, force: true });
-mkdirSync(OUTPUT_PATH);
+// // Create output folder
+// rmSync(OUTPUT_PATH, { recursive: true, force: true });
+// mkdirSync(OUTPUT_PATH);
 
-for (const path_to_sort of path_to_sorts) {
-  handleFolderFiles(path_to_sort);
-}
+// for (const path_to_sort of path_to_sorts) {
+//   handleFolderFiles(path_to_sort);
+// }
